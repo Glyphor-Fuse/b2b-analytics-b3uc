@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CORE/OS | Infrastructure Observability</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        /* RESET & VARIABLES */
+        :root {
+            --bg-deep: #050505;
+            --bg-panel: #0F0F0F;
+            --text-main: #EAEAEA;
+            --text-muted: #888888;
+            --color-accent: #FF5F1F;
+            --color-accent-dim: rgba(255, 95, 31, 0.2);
+            --border: #2A2A2A;
+            --border-active: #555555;
+            --font-head: 'Inter', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+            --ease: cubic-bezier(0.23, 1, 0.32, 1);
+            --rail-width: 280px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-deep);
+            color: var(--text-main);
+            font-family: var(--font-head);
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* UTILITIES */
+        .mono {
+            font-family: var(--font-mono);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-size: 0.75rem;
+        }
+
+        .accent { color: var(--color-accent); }
+        
+        a { text-decoration: none; color: inherit; transition: color 0.3s var(--ease); }
+        a:hover { color: var(--color-accent); }
+
+        /* LAYOUT STRUCTURE */
+        .layout-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* NAVIGATION RAIL */
+        .rail {
+            width: var(--rail-width);
+            height: 100vh;
+            position: fixed;
+            left: 0;
+            top: 0;
+            border-right: 1px solid var(--border);
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            background: var(--bg-deep);
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+
+        .brand {
+            font-weight: 800;
+            letter-spacing: -0.05em;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            background: var(--color-accent);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .nav-links {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            list-style: none;
+        }
+
+        .nav-item {
+            position: relative;
+            padding-left: 0;
+            transition: padding 0.3s var(--ease);
+        }
+
+        .nav-item::before {
+            content: '>';
+            position: absolute;
+            left: -15px;
+            opacity: 0;
+            color: var(--color-accent);
+            transition: all 0.3s var(--ease);
+            font-family: var(--font-mono);
+        }
+
+        .nav-item:hover {
+            padding-left: 10px;
+        }
+
+        .nav-item:hover::before {
+            opacity: 1;
+            left: 0;
+        }
+
+        .sys-info {
+            border-top: 1px solid var(--border);
+            padding-top: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            color: var(--text-muted);
+        }
+
+        /* MAIN CONTENT */
+        .main-stage {
+            margin-left: var(--rail-width);
+            width: calc(100% - var(--rail-width));
+            position: relative;
+        }
+
+        /* SECTION: HERO */
+        .hero {
+            min-height: 90vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 6rem;
+            border-bottom: 1px solid var(--border);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-bg {
+            position: absolute;
+            top: 0; right: 0; bottom: 0; left: 0;
+            background: radial-gradient(circle at 80% 20%, #1a1a1a 0%, transparent 60%);
+            z-index: -1;
+        }
+
+        h1 {
+            font-size: clamp(3rem, 5vw, 6rem);
+            line-height: 0.95;
+            letter-spacing: -0.04em;
+            margin-bottom: 2rem;
+            max-width: 900px;
+        }
+
+        .hero-meta {
+            display: flex;
+            gap: 2rem;
+            margin-bottom: 2rem;
+            color: var(--color-accent);
+        }
+
+        .cta-primary {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem 2rem;
+            background: var(--text-main);
+            color: var(--bg-deep);
+            font-family: var(--font-mono);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            transition: transform 0.2s var(--ease), background 0.2s;
+            cursor: pointer;
+        }
+
+        .cta-primary:hover {
+            background: var(--color-accent);
+            transform: translateY(-2px);
+        }
+
+        /* SECTION: MARQUEE */
+        .stream-bar {
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 0;
+            background: var(--bg-panel);
+            white-space: nowrap;
+            overflow: hidden;
+            display: flex;
+        }
+
+        .stream-content {
+            display: flex;
+            gap: 3rem;
+            animation: scroll 20s linear infinite;
+        }
+
+        .stream-item {
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* SECTION: GRID SYSTEM */
+        .grid-section {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .grid-cell {
+            padding: 4rem;
+            border-right: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+            min-height: 400px;
+            position: relative;
+            transition: background 0.4s var(--ease);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .grid-cell:nth-child(2n) {
+            border-right: none;
+        }
+
+        .grid-cell:hover {
+            background: #0A0A0A;
+        }
+
+        .grid-cell::before, .grid-cell::after {
+            content: '';
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            border: 1px solid transparent;
+            transition: all 0.3s var(--ease);
+        }
+
+        /* Crosshair Effect on Hover */
+        .grid-cell:hover::before {
+            top: 1rem; left: 1rem;
+            border-top: 1px solid var(--color-accent);
+            border-left: 1px solid var(--color-accent);
+        }
+        .grid-cell:hover::after {
+            bottom: 1rem; right: 1rem;
+            border-bottom: 1px solid var(--color-accent);
+            border-right: 1px solid var(--color-accent);
+        }
+
+        .cell-content h3 {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            letter-spacing: -0.02em;
+        }
+
+        .cell-content p {
+            color: var(--text-muted);
+            line-height: 1.5;
+            max-width: 300px;
+        }
+
+        .cell-image {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            filter: grayscale(100%) contrast(1.2);
+            margin-top: 2rem;
+            transition: filter 0.5s var(--ease);
+            mix-blend-mode: luminosity;
+        }
+
+        .grid-cell:hover .cell-image {
+            filter: grayscale(0%) contrast(1);
+        }
+
+        /* SECTION: THERMAL (WARM TONE) */
+        .thermal-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .thermal-visual {
+            background: linear-gradient(135deg, #2c1a15 0%, #1a1a1a 100%);
+            position: relative;
+            overflow: hidden;
+            border-right: 1px solid var(--border);
+        }
+
+        .thermal-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0.6;
+            mix-blend-mode: overlay;
+        }
+
+        .thermal-content {
+            padding: 6rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 1.5rem 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .stat-val {
+            color: #dca786; /* Copper Tone */
+            font-weight: 600;
+        }
+
+        /* FOOTER */
+        footer {
+            padding: 6rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+
+        .footer-cta h2 {
+            font-size: 3rem;
+            margin-bottom: 2rem;
+        }
+
+        /* ANIMATIONS */
+        @keyframes scroll {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; box-shadow: 0 0 0 0 rgba(255, 95, 31, 0.4); }
+            70% { opacity: 0.7; box-shadow: 0 0 0 10px rgba(255, 95, 31, 0); }
+            100% { opacity: 1; box-shadow: 0 0 0 0 rgba(255, 95, 31, 0); }
+        }
+
+        .reveal {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.6s var(--ease);
+        }
+        
+        .reveal.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 900px) {
+            .layout-container {
+                flex-direction: column;
+            }
+            .rail {
+                width: 100%;
+                height: auto;
+                position: relative;
+                padding: 1.5rem;
+                flex-direction: row;
+                align-items: center;
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+            }
+            .nav-links, .sys-info {
+                display: none;
+            }
+            .main-stage {
+                margin-left: 0;
+                width: 100%;
+            }
+            .grid-section, .thermal-section {
+                grid-template-columns: 1fr;
+            }
+            .grid-cell:nth-child(2n) {
+                border-right: 1px solid var(--border);
+            }
+            .thermal-visual {
+                height: 300px;
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+            }
+            .hero {
+                padding: 3rem 1.5rem;
+            }
+            h1 {
+                font-size: 2.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="layout-container">
+        
+        <!-- RAIL NAVIGATION -->
+        <aside class="rail">
+            <div class="brand mono">
+                <div class="status-indicator"></div>
+                CORE / OS
+            </div>
+
+            <ul class="nav-links mono">
+                <li class="nav-item"><a href="#">Platform</a></li>
+                <li class="nav-item"><a href="#">Telemetry</a></li>
+                <li class="nav-item"><a href="#">Solutions</a></li>
+                <li class="nav-item"><a href="#">Docs</a></li>
+            </ul>
+
+            <div class="sys-info mono">
+                <span>Sys: Online</span>
+                <span>Lat: 12ms</span>
+                <span>Ver: 4.0.2</span>
+            </div>
+        </aside>
+
+        <!-- MAIN CONTENT AREA -->
+        <main class="main-stage">
+            
+            <!-- HERO SECTION -->
+            <header class="hero">
+                <div class="hero-bg"></div>
+                <div class="hero-meta mono reveal">
+                    <span>// System Override</span>
+                    <span>// Network_Ready</span>
+                </div>
+                <h1 class="reveal">ABSOLUTE<br>INFRASTRUCTURE<br>VISIBILITY.</h1>
+                <p class="reveal" style="max-width: 500px; color: var(--text-muted); margin-bottom: 3rem; line-height: 1.6;">
+                    Eliminate the darkness in your stack. Core/OS provides real-time telemetry, granular observability, and predictive heuristics for mission-critical architecture.
+                </p>
+                <div class="reveal">
+                    <a href="#" class="cta-primary">Initialize Demo</a>
+                </div>
+            </header>
+
+            <!-- SCROLLING MARQUEE -->
+            <section class="stream-bar">
+                <div class="stream-content mono">
+                    <span class="stream-item"><span class="accent">●</span> INGESTING: 40TB/S</span>
+                    <span class="stream-item">// NODE_77: STABLE</span>
+                    <span class="stream-item">// LATENCY: < 10MS</span>
+                    <span class="stream-item"><span class="accent">●</span> THREAT DETECTED: 0</span>
+                    <span class="stream-item">// UPTIME: 99.999%</span>
+                    <span class="stream-item">// DEPLOY: SUCCESS</span>
+                    <!-- Repeat for seamless scroll -->
+                    <span class="stream-item"><span class="accent">●</span> INGESTING: 40TB/S</span>
+                    <span class="stream-item">// NODE_77: STABLE</span>
+                    <span class="stream-item">// LATENCY: < 10MS</span>
+                    <span class="stream-item"><span class="accent">●</span> THREAT DETECTED: 0</span>
+                    <span class="stream-item">// UPTIME: 99.999%</span>
+                    <span class="stream-item">// DEPLOY: SUCCESS</span>
+                </div>
+            </section>
+
+            <!-- GRID FEATURE SYSTEM -->
+            <section class="grid-section">
+                
+                <div class="grid-cell reveal">
+                    <div class="cell-header">
+                        <span class="mono accent">01. Observe</span>
+                    </div>
+                    <img src="https://images.unsplash.com/photo-1558494949-ef526b0042a0?q=80&w=1000&auto=format&fit=crop" alt="Server Data Abstract" class="cell-image">
+                    <div class="cell-content">
+                        <h3>Full-Stack Clarity</h3>
+                        <p>Trace requests from edge to database with zero sampling. See every packet, every error, every time.</p>
+                    </div>
+                </div>
+
+                <div class="grid-cell reveal">
+                    <div class="cell-header">
+                        <span class="mono accent">02. Analyze</span>
+                    </div>
+                    <img src="https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=1000&auto=format&fit=crop" alt="Cybersecurity Screen" class="cell-image">
+                    <div class="cell-content">
+                        <h3>Predictive Logic</h3>
+                        <p>Our heuristic engine identifies bottlenecks before they become outages. Fix the future, today.</p>
+                    </div>
+                </div>
+
+                <div class="grid-cell reveal">
+                    <div class="cell-header">
+                        <span class="mono accent">03. Control</span>
+                    </div>
+                    <img src="https://images.unsplash.com/photo-1516110833967-0b5716ca1387?q=80&w=1000&auto=format&fit=crop" alt="Artificial Intelligence Abstract" class="cell-image">
+                    <div class="cell-content">
+                        <h3>Auto-Remediation</h3>
+                        <p>Script responses to common anomalies. Let the system heal itself while you sleep.</p>
+                    </div>
+                </div>
+
+                <div class="grid-cell reveal">
+                    <div class="cell-header">
+                        <span class="mono accent">04. Secure</span>
+                    </div>
+                    <img src="https://images.unsplash.com/photo-1510511459019-5dda7724fd87?q=80&w=1000&auto=format&fit=crop" alt="Data Network" class="cell-image">
+                    <div class="cell-content">
+                        <h3>Perimeter Defense</h3>
+                        <p>Real-time anomaly detection flags intruders instantly. Lock down vectors in milliseconds.</p>
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- THERMAL / WARM TONE SECTION -->
+            <section class="thermal-section reveal">
+                <div class="thermal-visual">
+                    <img src="https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?q=80&w=1000&auto=format&fit=crop" alt="Abstract Copper Texture" class="thermal-img">
+                </div>
+                <div class="thermal-content">
+                    <span class="mono accent" style="margin-bottom: 1rem;">// LOAD CAPACITY</span>
+                    <h3 style="font-size: 2.5rem; margin-bottom: 2rem; letter-spacing: -0.03em;">Handling the heat.</h3>
+                    <p style="color: var(--text-muted); margin-bottom: 2rem;">Your infrastructure generates massive heat maps of data. Core/OS visualizes load distribution in warm, intuitive gradients so you know exactly where the pressure lies.</p>
+                    
+                    <div class="stat-row mono">
+                        <span>Max Throughput</span>
+                        <span class="stat-val">450 GB/s</span>
+                    </div>
+                    <div class="stat-row mono">
+                        <span>Retention</span>
+                        <span class="stat-val">365 Days</span>
+                    </div>
+                    <div class="stat-row mono">
+                        <span>Query Speed</span>
+                        <span class="stat-val">0.04ms</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- FOOTER -->
+            <footer class="reveal">
+                <div class="footer-brand">
+                    <div class="brand mono" style="margin-bottom: 1rem;">CORE / OS</div>
+                    <p style="color: var(--text-muted); max-width: 300px;">The standard for enterprise observability.</p>
+                </div>
+                <div class="footer-cta">
+                    <h2>READY TO DEPLOY?</h2>
+                    <a href="#" class="cta-primary">Start Free Trial</a>
+                </div>
+            </footer>
+
+        </main>
+    </div>
+
+    <script>
+        // INTERSECTION OBSERVER FOR SCROLL REVEAL
+        const observerOptions = {
+            root: null,
+            rootMargin: '0px',
+            threshold: 0.1
+        };
+
+        const observer = new IntersectionObserver((entries, observer) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('active');
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.reveal').forEach((el) => {
+            observer.observe(el);
+        });
+
+        // MOUSE PARALLAX HINT ON HERO
+        const hero = document.querySelector('.hero');
+        hero.addEventListener('mousemove', (e) => {
+            const x = e.clientX / window.innerWidth;
+            const y = e.clientY / window.innerHeight;
+            
+            hero.style.background = `radial-gradient(circle at ${80 + (x * 5)}% ${20 + (y * 5)}%, #1a1a1a 0%, transparent 60%)`;
+        });
+    </script>
+
+<script>
+  let inspectorMode = false;
+  let hoveredElement = null;
+  let selectedElement = null;
+  
+  window.addEventListener('message', (event) => {
+    if (event.data?.type === 'SET_INSPECTOR_MODE') {
+      inspectorMode = event.data.enabled;
+      document.body.style.cursor = inspectorMode ? 'crosshair' : 'default';
+    }
+    
+    if (event.data?.type === 'LOCAL_UPDATE' && selectedElement) {
+      const update = event.data.update;
+      
+      if (update.text !== undefined) {
+        selectedElement.innerText = update.text;
+      }
+      
+      if (update.styles) {
+        Object.entries(update.styles).forEach(([prop, value]) => {
+          selectedElement.style[prop] = value;
+        });
+      }
+    }
+  });
+  
+  document.addEventListener('mouseover', (e) => {
+    if (!inspectorMode) return;
+    if (hoveredElement && hoveredElement !== selectedElement) {
+      hoveredElement.style.outline = '';
+    }
+    hoveredElement = e.target;
+    if (hoveredElement !== selectedElement) {
+      hoveredElement.style.outline = '2px solid #06b6d4';
+    }
+  });
+  
+  document.addEventListener('mouseout', (e) => {
+    if (!inspectorMode || !hoveredElement) return;
+    if (hoveredElement !== selectedElement) {
+      hoveredElement.style.outline = '';
+    }
+  });
+  
+  document.addEventListener('click', (e) => {
+    if (!inspectorMode) return;
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (selectedElement) {
+      selectedElement.style.outline = '';
+    }
+    
+    const el = e.target;
+    selectedElement = el;
+    el.style.outline = '3px solid #06b6d4';
+    
+    const rect = el.getBoundingClientRect();
+    const styles = window.getComputedStyle(el);
+    
+    window.parent.postMessage({
+      type: 'ELEMENT_SELECTED',
+      element: {
+        tagName: el.tagName.toLowerCase(),
+        text: el.innerText?.substring(0, 500) || '',
+        className: el.className || '',
+        styles: {
+          color: styles.color,
+          backgroundColor: styles.backgroundColor,
+          fontSize: styles.fontSize,
+          fontWeight: styles.fontWeight,
+          padding: styles.padding,
+          margin: styles.margin,
+        },
+        rect: {
+          top: rect.top,
+          left: rect.left,
+          width: rect.width,
+          height: rect.height,
+        },
+        selector: el.id ? '#' + el.id : (el.className ? '.' + el.className.split(' ')[0] : el.tagName.toLowerCase())
+      }
+    }, '*');
+  }, true);
+</script>
+</body>
+</html>
